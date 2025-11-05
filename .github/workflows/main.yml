@@ -17,3 +17,4 @@ jobs:
       with:
         package-name: armeo_xpc
         target-ros2-distro: jazzy
+        import-token: ${{ secrets.GITHUB_TOKEN }}
