@@ -9,13 +9,17 @@ endif()
 find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
-# find_package(<dependency> REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 add_subdirectory(xpc)
 
 add_executable(armeo_xpc
         src/armeo_xpc.cpp
+        src/ros_publisher.cpp
 )
-target_link_libraries(armeo_xpc PRIVATE xpcapi)
+target_link_libraries(armeo_xpc xpcapi)
+ament_target_dependencies(armeo_xpc rclcpp std_msgs geometry_msgs)
 target_include_directories(armeo_xpc PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)

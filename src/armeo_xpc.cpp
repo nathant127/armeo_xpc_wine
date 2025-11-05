@@ -6,6 +6,10 @@
 #include <chrono>
 #include <map>
 
+using namespace std::chrono_literals;
+
+#include "ros_publisher.h"
+
 #include "xpcapi.h"
 #include "xpcapiconst.h"
 
@@ -28,28 +32,15 @@ const char *wanted_signals[] = {
 
 static int xpcError();
 
-static std::map<const char *, int> signals;
+std::map<const char *, int> signals;
 static std::atomic<bool> quit = false;
-
-static void mainloop(const int port) {
-  using namespace std::chrono_literals;
-
-  while (!quit) {
-    for (const auto [name, num]: signals) {
-      const auto val = xPCGetSignal(port, num);
-      printf("%s: %f\n", name, val);
-    }
-
-    std::this_thread::sleep_for(1ms);
-  }
-}
+int port;
 
 int main(int argc, char **argv) {
-  (void) argc;
-  (void) argv;
+  rclcpp::init(argc, argv);
 
   printf("hello world armeo_xpc package\n");
-  auto exe_path = std::filesystem::path(argv[0]).remove_filename();
+  const auto exe_path = std::filesystem::path(argv[0]).remove_filename();
   printf("exe_path: %ls\n", exe_path.c_str());
 
   if (xPCInitAPI()) {
@@ -58,7 +49,7 @@ int main(int argc, char **argv) {
   }
 
   printf("Connecting to %s:%s...\n", target_ip, target_port);
-  const int port = xPCOpenTcpIpPort(target_ip, target_port);
+  port = xPCOpenTcpIpPort(target_ip, target_port);
   if (xpcError()) {
     fprintf(stderr, "Failed to connect to target.\n");
     return -1;
@@ -92,19 +83,12 @@ int main(int argc, char **argv) {
     fprintf(stderr, "App was already running? Continuing anyway\n");
   }
 
-  SetConsoleCtrlHandler([](const DWORD ctrl_type) -> BOOL {
-    if (ctrl_type != CTRL_C_EVENT && ctrl_type != CTRL_BREAK_EVENT) {
-      return FALSE;
-    }
-
-    printf("Received %lu - asking to exit...\n", ctrl_type);
-    quit = true;
-    return TRUE;
-  }, true);
-
-  mainloop(port);
+  const auto sample_time = std::chrono::duration<double> ( xPCGetSampleTime(port) );
+  const auto sample_time_us = std::chrono::duration_cast<std::chrono::microseconds>(sample_time);
+  rclcpp::spin(std::make_shared<ArmeoXPCPublisher>(sample_time_us));
 
   printf("Application finished. Cleaning up.\n");
+  rclcpp::shutdown();
   if (xPCIsAppRunning(port)) {
     xPCStopApp(port);
   }
