@@ -11,9 +11,9 @@ jobs:
     - name: Setup ROS
       uses: ros-tooling/setup-ros@v0.7
       with:
-        required-ros-distributions: jammy
+        required-ros-distributions: jazzy
     - name: Build and test
       uses: ros-tooling/action-ros-ci@v0.4
       with:
         package-name: armeo_xpc
-        target-ros2-distro: jammy
+        target-ros2-distro: jazzy
