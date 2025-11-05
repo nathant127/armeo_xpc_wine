@@ -1,0 +1,19 @@
+on:
+  push:
+    branches:
+    - jammy
+
+jobs:
+  build:
+    name: "Build armeo_xpc (VS2022)"
+    runs-on: windows-2022
+    steps:
+    - name: Setup ROS
+      uses: ros-tooling/setup-ros@v0.7
+      with:
+        required-ros-distributions: jammy
+    - name: Build and test
+      uses: ros-tooling/action-ros-ci@v0.4
+      with:
+        package-name: armeo_xpc
+        target-ros2-distro: jammy
