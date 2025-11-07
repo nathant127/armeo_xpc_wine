@@ -12,9 +12,17 @@ jobs:
       uses: ros-tooling/setup-ros@v0.7
       with:
         required-ros-distributions: jazzy
+    - uses: actions/checkout@v5
     - name: Build and test
+      id: ros_build_step
       uses: ros-tooling/action-ros-ci@v0.4
       with:
         package-name: armeo_xpc
         target-ros2-distro: jazzy
-        import-token: ${{ secrets.GITHUB_TOKEN }}
+        vcs-repo-file-url: 'armeo_xpc_jazzy.repos'
+    - uses: actions/upload-artifact@v5
+      with:
+        name: armeo_xpc_env
+        path: |
+          ${{ steps.ros_build_step.outputs.ros-workspace-directory-name }}/bin
+          ${{ steps.ros_build_step.outputs.ros-workspace-directory-name }}/lib/armeo_xpc/armeo_xpc
