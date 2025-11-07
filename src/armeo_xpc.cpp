@@ -8,6 +8,8 @@
 
 using namespace std::chrono_literals;
 
+#include "xpc.h"
+#include "xpc_signal.h"
 #include "ros_publisher.h"
 
 #include "xpcapi.h"
@@ -17,23 +19,6 @@ constexpr char target_ip[] = "10.10.10.11";
 constexpr char target_port[] = "22222";
 constexpr char target_model[] = "AM2_3_1_01HWfullV2_PCIe";
 
-const char *wanted_signals[] = {
-  "Output/SoftwareSignals/EndEffector/s1",
-  "Output/SoftwareSignals/EndEffector/s2",
-  "Output/SoftwareSignals/EndEffector/s3",
-  "Output/SoftwareSignals/JointAngle/s1",
-  "Output/SoftwareSignals/JointAngle/s2",
-  "Output/SoftwareSignals/JointAngle/s3",
-  "Output/SoftwareSignals/JointAngle/s4",
-  "Output/SoftwareSignals/JointAngle/s5",
-  "Output/SoftwareSignals/JointAngle/s6",
-  "Output/SoftwareSignals/JointAngle/s7",
-};
-
-static int xpcError();
-
-std::map<const char *, int> signals;
-static std::atomic<bool> quit = false;
 int port;
 
 int main(int argc, char **argv) {
@@ -64,17 +49,15 @@ int main(int argc, char **argv) {
   printf("Application %s loaded.\n SampleTime: %g\n StopTime: %g\n", target_model, xPCGetSampleTime(port),
          xPCGetStopTime(port));
 
-  for (const char *signal: wanted_signals) {
-    const int sig_idx = xPCGetSignalIdx(port, signal);
-    if (xpcError() || sig_idx == -1) {
-      fprintf(stderr, "Failed to acquire signal %s - skipping...\n", signal);
-      continue;
-    }
 
-    signals[signal] = sig_idx;
-  }
+  auto topics = get_ros_xpc_topics(port);
+  const size_t topic_count = topics.size();
 
-  printf("%llu signals loaded. Ready to start!\n", signals.size());
+  const auto sample_time = std::chrono::duration<double>(xPCGetSampleTime(port));
+  const auto sample_time_us = std::chrono::duration_cast<std::chrono::microseconds>(sample_time);
+  const auto ros_node = std::make_shared<ArmeoXPCPublisher>(sample_time_us, std::move(topics));
+
+  printf("Signals loaded for %llu topics. Ready to start!\n", topic_count);
   // No bailing out now!
   if (!xPCIsAppRunning(port)) {
     xPCStartApp(port);
@@ -83,9 +66,8 @@ int main(int argc, char **argv) {
     fprintf(stderr, "App was already running? Continuing anyway\n");
   }
 
-  const auto sample_time = std::chrono::duration<double> ( xPCGetSampleTime(port) );
-  const auto sample_time_us = std::chrono::duration_cast<std::chrono::microseconds>(sample_time);
-  rclcpp::spin(std::make_shared<ArmeoXPCPublisher>(sample_time_us));
+  ros_node->start();
+  rclcpp::spin(ros_node);
 
   printf("Application finished. Cleaning up.\n");
   rclcpp::shutdown();
@@ -97,11 +79,3 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-static int xpcError() {
-  const int err = xPCGetLastError();
-  if (err == ENOERR) return 0;
-
-  const char *err_msg = xPCErrorMsg(err, nullptr);
-  fprintf(stderr, "xPC error %d: %s\n", err, err_msg);
-  return err;
-}

@@ -1,21 +1,32 @@
 #pragma once
 
 #include <chrono>
-#include <map>
 
 #include "rclcpp/rclcpp.hpp"
-#include "geometry_msgs/msg/point.hpp"
+#include "armeo_xpc_interfaces/msg/xpc_bridged_data.hpp"
+
+#include "xpc_signal.h"
 
 // XXX HACK
-extern std::map<const char *, int> signals;
 extern int port;
 
 class ArmeoXPCPublisher final : public rclcpp::Node {
 public:
-  explicit ArmeoXPCPublisher(std::chrono::microseconds sample_time);
+  explicit ArmeoXPCPublisher(std::chrono::microseconds sample_time, std::vector<XpcRosTopic> topics);
 
   void publish() const;
+
+  void start() const {
+    publish_timer->reset();
+  }
+  void stop() const {
+    publish_timer->cancel();
+  }
+
 private:
-  rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr end_effector_pub;
+  using Publisher = rclcpp::Publisher<armeo_xpc_interfaces::msg::XpcBridgedData>;
   rclcpp::TimerBase::SharedPtr publish_timer;
+
+  const std::vector<std::pair<XpcRosTopic, Publisher::SharedPtr>> topics;
+  decltype(topics) make_publishers(std::vector<XpcRosTopic> topics);
 };
