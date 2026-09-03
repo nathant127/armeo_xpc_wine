@@ -17,8 +17,6 @@
 #define XPCAPICALLCONV __stdcall
 #endif
 
-#define XPCAPIDLL "../dll/xpcapi.dll"
-
 #undef XPCAPIFUNC
 #define XPCAPIFUNC(type, fun) NOMANGLE EXPORT type (XPCAPICALLCONV *fun)
 #include "include/xpcapi.h"
@@ -33,12 +31,12 @@ static HMODULE dllHandle;
          GetProcAddress(dllHandle, QUOTE(name))) == NULL) \
         return -1;
 
-int xPCInitAPI(void) {
+int xPCInitAPI(const char* dll_path) {
     /* Call GetModuleHandle first in case xpcapi.dll is already loaded */
-    if ((dllHandle = GetModuleHandleA(XPCAPIDLL)) == NULL)
+    if ((dllHandle = GetModuleHandleA(dll_path)) == NULL)
         /* If the dll is not already loaded (dllHandle == NULL), *
          * call LoadLibrary to load it.                          */
-        if ((dllHandle = LoadLibraryA(XPCAPIDLL)) == NULL) {
+        if ((dllHandle = LoadLibraryA(dll_path)) == NULL) {
             return -1;
         }
     return (xPCResolveAPI(dllHandle));
