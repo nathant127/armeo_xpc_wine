@@ -7,3 +7,8 @@ Build project
 ```
 make
 ```
+
+Run Project
+```
+wine wine.exe.so
+```
